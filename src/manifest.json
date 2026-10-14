@@ -1,0 +1,16 @@
+{
+  "manifest_version": 2,
+  "name": "Claude Reader Assistant",
+  "version": "0.1.0",
+  "description": "Chat with Claude Code about the document open in the Zotero reader.",
+  "author": "Seunghwan Jung",
+  "homepage_url": "https://github.com/__REPOSITORY__",
+  "applications": {
+    "zotero": {
+      "id": "claude-reader-assistant@navercorp.com",
+      "update_url": "https://github.com/__REPOSITORY__/releases/latest/download/updates.json",
+      "strict_min_version": "7.0",
+      "strict_max_version": "10.*"
+    }
+  }
+}
