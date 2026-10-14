@@ -183,7 +183,7 @@ ClaudeReaderAssistant = {
 		titleBox.append(this._el(doc, 'div', 'cra-title', 'Claude Assistant'));
 		let modelLabel = this._el(doc, 'div', 'cra-model', this._getPref('model') || 'Claude Code 기본 모델');
 		titleBox.append(modelLabel);
-		let newButton = this._el(doc, 'button', 'cra-button', '새 대화');
+		let newButton = this._el(doc, 'button', 'cra-button', 'New chat');
 		newButton.title = '대화 기록과 문서 컨텍스트를 초기화합니다';
 		let closeButton = this._el(doc, 'button', 'cra-button cra-icon', '×');
 		closeButton.title = '패널 닫기';
@@ -376,7 +376,7 @@ ClaudeReaderAssistant = {
 
 	_setBusy(state, busy) {
 		state.busy = busy;
-		state.els.sendButton.textContent = busy ? '중지' : '전송';
+		state.els.sendButton.textContent = busy ? 'Stop' : '전송';
 		state.els.sendButton.classList.toggle('cra-stop', busy);
 	},
 
@@ -429,7 +429,7 @@ ClaudeReaderAssistant = {
 		catch (e) {
 			Zotero.logError(e);
 			if (state.stopped) {
-				answer += '\n\n_(중지됨)_';
+				answer += '\n\n_(Stopped)_';
 			}
 			else {
 				answer += (answer ? '\n\n' : '') + '**오류:** ' + (e.message || e);

@@ -32,8 +32,8 @@ Zotero checks the release page for updates automatically.
 
 1. Open a PDF in Zotero. The assistant panel appears to the left of the reader.
 2. Type a question and press **Enter** (**Shift+Enter** inserts a new line).
-3. Press **중지** (Stop) to cancel an answer that is in progress.
-4. Press **새 대화** (New chat) to clear the conversation and send the document again with the next question.
+3. Press **Stop** to cancel an answer that is in progress.
+4. Press **New chat** to clear the conversation and send the document again with the next question.
 
 Use the **✦ Claude** button in the reader toolbar to show or hide the panel. Drag the panel's right edge to resize it.
 
