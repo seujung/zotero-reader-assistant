@@ -1,14 +1,15 @@
 # Claude Reader Assistant for Zotero
 
-A Zotero plugin that adds a chat panel to the left of the PDF reader. Ask questions about the open document and get answers from [Claude Code](https://docs.claude.com/en/docs/claude-code/overview), using your own Claude Code login and default model.
+A Zotero plugin that adds a chat panel next to the PDF reader. Ask questions about the open document and get answers from [Claude Code](https://docs.claude.com/en/docs/claude-code/overview), using your own Claude Code login and default model.
 
 - The document's text and metadata are sent as context with the first question.
 - Follow-up questions continue the same conversation, so earlier questions, answers and the document stay in context.
 - Answers stream in and render as GitHub-flavored Markdown (tables, lists, code blocks, links).
-- Select text in the reader and choose **✦ Claude에게 묻기** ("Ask Claude") to quote it in your question.
+- Select text in the reader and choose **✦ Ask Claude** to quote it in your question.
 - Right-click an answer to copy the selected text or the whole answer as Markdown.
+- Show the panel on the right (default) or left side of the reader.
 
-> The UI text is currently in Korean. Claude replies in the language you write in.
+Claude replies in the language you write in.
 
 ## Requirements
 
@@ -30,14 +31,17 @@ Zotero checks the release page for updates automatically.
 
 ## Usage
 
-1. Open a PDF in Zotero. The assistant panel appears to the left of the reader.
+1. Open a PDF in Zotero. The assistant panel appears to the right of the reader.
 2. Type a question and press **Enter** (**Shift+Enter** inserts a new line).
 3. Press **Stop** to cancel an answer that is in progress.
 4. Press **New chat** to clear the conversation and send the document again with the next question.
 
-Use the **✦ Claude** button in the reader toolbar to show or hide the panel. Drag the panel's right edge to resize it.
+Use the **✦ Claude** button in the reader toolbar to show or hide the panel. Click **⇤** or **⇥** in the panel header to move the panel to the left or right of the reader. Drag the edge between the panel and the reader to resize it.
 
-The panel header shows the model that answered, as reported by Claude Code.
+The panel header shows the model, for example `Model: Opus 5.5 (1M context)`:
+
+- Before the first answer, the plugin reads the `model` setting (the plugin's `model` preference, or `model` in `~/.claude/settings.json`). It maps the setting to a model name with the model list from Claude Code. The plugin gets this list with an `initialize` control request, which does not send a message to the model.
+- After an answer, the header shows the exact model ID that Claude Code reported, for example `claude-opus-5-5[1m]`.
 
 ## How it works
 
@@ -65,6 +69,7 @@ Open **Zotero Settings → Advanced → Config Editor** and search for `extensio
 | `model` | `""` | Model passed with `--model` (for example `sonnet` or `opus`). Empty means the Claude Code default. |
 | `maxContextChars` | `400000` | Maximum number of document characters sent as context. Longer text is truncated. |
 | `panelWidth` | `380` | Panel width in pixels. Updated when you resize the panel. |
+| `panelPosition` | `"right"` | Side of the reader the panel is shown on: `"right"` or `"left"`. Updated by the header button. |
 
 ## Privacy and security
 

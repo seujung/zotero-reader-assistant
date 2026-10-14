@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Claude Reader Assistant",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Chat with Claude Code about the document open in the Zotero reader.",
   "author": "Seunghwan Jung",
   "homepage_url": "https://github.com/__REPOSITORY__",

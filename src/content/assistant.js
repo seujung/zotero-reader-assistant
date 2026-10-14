@@ -127,11 +127,42 @@ ClaudeReaderAssistant = {
 		}
 		container.style.display = 'flex';
 		container.style.flexDirection = 'row';
-		container.insertBefore(state.panel, iframe);
-		container.insertBefore(state.resizer, iframe);
+		this._placePanel(state);
 		this._applyVisibility(state);
-		Zotero.debug(`ClaudeReaderAssistant: attached panel to ${reader.tabID}`);
+		Zotero.debug(`ClaudeReaderAssistant: attached panel to ${reader.tabID} on the ${this._getPosition()}`);
 		return state;
+	},
+
+	_getPosition() {
+		return this._getPref('panelPosition') === 'left' ? 'left' : 'right';
+	},
+
+	/**
+	 * Put the panel and its resizer on the configured side of the reader:
+	 * left: [panel][resizer][reader], right: [reader][resizer][panel]
+	 */
+	_placePanel(state) {
+		let iframe = state.reader._iframe;
+		let container = iframe?.parentNode;
+		if (!container) return;
+		if (this._getPosition() === 'left') {
+			container.insertBefore(state.panel, iframe);
+			container.insertBefore(state.resizer, iframe);
+		}
+		else {
+			iframe.after(state.resizer, state.panel);
+		}
+		state.els.positionButton.textContent = this._getPosition() === 'left' ? '⇥' : '⇤';
+		state.els.positionButton.title = this._getPosition() === 'left'
+			? 'Move panel to the right'
+			: 'Move panel to the left';
+	},
+
+	_togglePosition() {
+		this._setPref('panelPosition', this._getPosition() === 'left' ? 'right' : 'left');
+		for (let state of this._states.values()) {
+			if (state.panel.isConnected) this._placePanel(state);
+		}
 	},
 
 	toggle(reader, show) {
@@ -181,29 +212,30 @@ ClaudeReaderAssistant = {
 		let header = this._el(doc, 'div', 'cra-header');
 		let titleBox = this._el(doc, 'div', 'cra-title-box');
 		titleBox.append(this._el(doc, 'div', 'cra-title', 'Claude Assistant'));
-		let modelLabel = this._el(doc, 'div', 'cra-model', this._getPref('model') || 'Claude Code 기본 모델');
+		let modelLabel = this._el(doc, 'div', 'cra-model', 'Model: checking…');
 		titleBox.append(modelLabel);
 		let newButton = this._el(doc, 'button', 'cra-button', 'New chat');
-		newButton.title = '대화 기록과 문서 컨텍스트를 초기화합니다';
+		newButton.title = 'Clear the conversation. The next question sends the document again.';
+		let positionButton = this._el(doc, 'button', 'cra-button cra-icon');
 		let closeButton = this._el(doc, 'button', 'cra-button cra-icon', '×');
-		closeButton.title = '패널 닫기';
-		header.append(titleBox, newButton, closeButton);
+		closeButton.title = 'Hide panel';
+		header.append(titleBox, newButton, positionButton, closeButton);
 
-		let contextInfo = this._el(doc, 'div', 'cra-context', '첫 질문을 보내면 이 문서의 본문을 컨텍스트로 전달합니다.');
+		let contextInfo = this._el(doc, 'div', 'cra-context', 'The document text is sent as context with your first question.');
 		let messages = this._el(doc, 'div', 'cra-messages');
 
 		let quote = this._el(doc, 'div', 'cra-quote');
 		quote.hidden = true;
 		let quoteText = this._el(doc, 'div', 'cra-quote-text');
 		let quoteRemove = this._el(doc, 'button', 'cra-button cra-icon', '×');
-		quoteRemove.title = '선택한 텍스트 제거';
+		quoteRemove.title = 'Remove selected text';
 		quote.append(quoteText, quoteRemove);
 
 		let inputRow = this._el(doc, 'div', 'cra-input-row');
 		let input = this._el(doc, 'textarea', 'cra-input');
 		input.setAttribute('rows', '3');
-		input.setAttribute('placeholder', '이 문서에 대해 질문하세요 (Enter: 전송, Shift+Enter: 줄바꿈)');
-		let sendButton = this._el(doc, 'button', 'cra-button cra-send', '전송');
+		input.setAttribute('placeholder', 'Ask about this document (Enter to send, Shift+Enter for a new line)');
+		let sendButton = this._el(doc, 'button', 'cra-button cra-send', 'Send');
 		inputRow.append(input, sendButton);
 
 		panel.append(header, contextInfo, messages, quote, inputRow);
@@ -214,7 +246,7 @@ ClaudeReaderAssistant = {
 			reader,
 			panel,
 			resizer,
-			els: { modelLabel, contextInfo, messages, quote, quoteText, input, sendButton },
+			els: { modelLabel, positionButton, contextInfo, messages, quote, quoteText, input, sendButton },
 			toolbarButton: null,
 			sessionID: null,
 			contextLoaded: false,
@@ -226,6 +258,8 @@ ClaudeReaderAssistant = {
 		};
 
 		newButton.addEventListener('click', () => this._reset(state));
+		positionButton.addEventListener('click', () => this._togglePosition());
+		this._showConfiguredModel(state);
 		closeButton.addEventListener('click', () => this.toggle(state.reader, false));
 		quoteRemove.addEventListener('click', () => this._setQuote(state, null));
 		sendButton.addEventListener('click', () => {
@@ -256,7 +290,10 @@ ClaudeReaderAssistant = {
 		let { panel, resizer } = state;
 		let startX, startWidth;
 		let onMove = (event) => {
-			let width = Math.min(900, Math.max(260, startWidth + event.clientX - startX));
+			// The resizer sits on the reader side of the panel.
+			let delta = event.clientX - startX;
+			if (this._getPosition() === 'right') delta = -delta;
+			let width = Math.min(900, Math.max(260, startWidth + delta));
 			panel.style.width = width + 'px';
 		};
 		let onUp = (event) => {
@@ -310,9 +347,9 @@ ClaudeReaderAssistant = {
 			item.addEventListener('command', () => Zotero.Utilities.Internal.copyTextToClipboard(text));
 			popup.append(item);
 		};
-		addItem('복사', selectedText);
+		addItem('Copy', selectedText);
 		if (answerEl?._craText) {
-			addItem('답변 전체 복사 (Markdown)', answerEl._craText);
+			addItem('Copy Answer as Markdown', answerEl._craText);
 		}
 		popup.openPopupAtScreen(event.screenX, event.screenY, true);
 	},
@@ -322,7 +359,7 @@ ClaudeReaderAssistant = {
 		state.sessionID = null;
 		state.contextLoaded = false;
 		state.els.messages.replaceChildren();
-		state.els.contextInfo.textContent = '첫 질문을 보내면 이 문서의 본문을 컨텍스트로 전달합니다.';
+		state.els.contextInfo.textContent = 'The document text is sent as context with your first question.';
 		this._setQuote(state, null);
 	},
 
@@ -355,7 +392,7 @@ ClaudeReaderAssistant = {
 		let text = params?.annotation?.text;
 		if (!text) return;
 		let button = doc.createElement('button');
-		button.textContent = '✦ Claude에게 묻기';
+		button.textContent = '✦ Ask Claude';
 		button.style.cssText = 'margin-top:6px;width:100%;padding:4px 6px;font-size:12px;cursor:pointer;';
 		button.addEventListener('click', () => {
 			let state = this.toggle(reader, true);
@@ -376,7 +413,7 @@ ClaudeReaderAssistant = {
 
 	_setBusy(state, busy) {
 		state.busy = busy;
-		state.els.sendButton.textContent = busy ? 'Stop' : '전송';
+		state.els.sendButton.textContent = busy ? 'Stop' : 'Send';
 		state.els.sendButton.classList.toggle('cra-stop', busy);
 	},
 
@@ -432,7 +469,7 @@ ClaudeReaderAssistant = {
 				answer += '\n\n_(Stopped)_';
 			}
 			else {
-				answer += (answer ? '\n\n' : '') + '**오류:** ' + (e.message || e);
+				answer += (answer ? '\n\n' : '') + '**Error:** ' + (e.message || e);
 			}
 			render();
 		}
@@ -475,7 +512,7 @@ ClaudeReaderAssistant = {
 		}
 		meta.push('File type: ' + (item.attachmentContentType || 'unknown'));
 
-		state.els.contextInfo.textContent = '문서 본문을 추출하는 중…';
+		state.els.contextInfo.textContent = 'Extracting document text…';
 		let text = '';
 		try {
 			text = (await item.attachmentText) || '';
@@ -488,8 +525,8 @@ ClaudeReaderAssistant = {
 		if (truncated) text = text.substring(0, max);
 
 		let info = text
-			? `컨텍스트: ${text.length.toLocaleString()}자${truncated ? ' (최대 길이에서 잘림)' : ''}`
-			: '경고: 문서 본문을 추출하지 못했습니다. 메타데이터만 전달합니다.';
+			? `Context: ${text.length.toLocaleString()} characters${truncated ? ' (truncated to the maximum length)' : ''}`
+			: 'Warning: Could not extract the document text. Only metadata is sent.';
 		state.els.contextInfo.textContent = info;
 
 		return `<document_metadata>\n${meta.join('\n')}\n</document_metadata>\n\n`
@@ -523,9 +560,128 @@ ClaudeReaderAssistant = {
 			return await Subprocess.pathSearch('claude', { PATH: this._extendedPath() });
 		}
 		catch (e) {
-			throw new Error('Claude Code CLI(claude)를 찾지 못했습니다. '
-				+ `설정 편집기에서 ${PREF_PREFIX}claudePath 값을 지정하십시오.`);
+			throw new Error('Could not find the Claude Code CLI (claude). '
+				+ `Set ${PREF_PREFIX}claudePath in the Config Editor.`);
 		}
+	},
+
+	/**
+	 * Ask the CLI for its model list with an "initialize" control request.
+	 * This starts Claude Code without sending a message, so no model request is made.
+	 * Resolves to [{ value, displayName, description }], or [] on failure.
+	 */
+	_getModelList() {
+		if (!this._modelListPromise) {
+			this._modelListPromise = this._fetchModelList().catch((e) => {
+				Zotero.logError(e);
+				this._modelListPromise = null;
+				return [];
+			});
+		}
+		return this._modelListPromise;
+	},
+
+	async _fetchModelList() {
+		let proc = await Subprocess.call({
+			command: await this._resolveClaudePath(),
+			arguments: ['-p', '--input-format', 'stream-json', '--output-format', 'stream-json',
+				'--verbose', '--tools', '', '--strict-mcp-config'],
+			environment: { PATH: this._extendedPath() },
+			environmentAppend: true,
+			workdir: await this._workdir(),
+			stderr: 'pipe',
+		});
+		let timer = setTimeout(() => proc.kill(), 20000);
+		try {
+			proc.stdin.write(JSON.stringify({
+				type: 'control_request',
+				request_id: 'models',
+				request: { subtype: 'initialize' },
+			}) + '\n');
+			let buffer = '';
+			let str;
+			while ((str = await proc.stdout.readString())) {
+				buffer += str;
+				let lines = buffer.split('\n');
+				buffer = lines.pop();
+				for (let line of lines) {
+					let msg;
+					try {
+						msg = JSON.parse(line);
+					}
+					catch (e) {
+						continue;
+					}
+					if (msg.type === 'control_response' && msg.response?.request_id === 'models') {
+						return msg.response.response?.models || [];
+					}
+				}
+			}
+			return [];
+		}
+		finally {
+			clearTimeout(timer);
+			try {
+				proc.kill();
+			}
+			catch (e) {}
+		}
+	},
+
+	async _readClaudeSettingsModel() {
+		try {
+			let path = PathUtils.join(this._homeDir(), '.claude', 'settings.json');
+			let settings = JSON.parse(await IOUtils.readUTF8(path));
+			return typeof settings.model === 'string' ? settings.model : '';
+		}
+		catch (e) {
+			return '';
+		}
+	},
+
+	/**
+	 * Turn a model setting such as "opus[1m]", "default" or "claude-opus-5-5" into a
+	 * display name such as "Opus 5.5 (1M context)", using the CLI's model list.
+	 */
+	_describeModel(setting, models) {
+		let base = setting.replace(/\[1m\]$/i, '');
+		let suffix = /\[1m\]$/i.test(setting) ? ' (1M context)' : '';
+		let entry = models.find(m => m.value === base);
+		let name;
+		if (entry?.value === 'default') {
+			// "Default (recommended)": the description starts with the real model name.
+			name = (entry.description || '').split('·')[0].trim();
+		}
+		else if (entry) {
+			name = entry.displayName;
+		}
+		else {
+			// Full model ID such as "claude-opus-5-5"
+			let m = base.match(/^claude-([a-z]+)-(\d+)(?:-(\d+))?/);
+			if (m) name = m[1][0].toUpperCase() + m[1].slice(1) + ' ' + m[2] + (m[3] ? '.' + m[3] : '');
+		}
+		return (name || setting) + suffix;
+	},
+
+	async _showConfiguredModel(state) {
+		let pref = this._getPref('model');
+		let setting = pref || await this._readClaudeSettingsModel() || 'default';
+		let models = await this._getModelList();
+		// A real answer may already have reported the exact model.
+		if (state.exactModel) return;
+		let source = pref ? 'plugin setting' : 'Claude Code default';
+		state.els.modelLabel.textContent = `Model: ${this._describeModel(setting, models)}`;
+		state.els.modelLabel.title = `${source}: ${setting}`;
+		Zotero.debug(`ClaudeReaderAssistant: ${state.els.modelLabel.textContent} (${source}: ${setting})`);
+	},
+
+	// Show the exact model ID reported by Claude Code for an answer.
+	async _showModel(state, modelID) {
+		state.exactModel = modelID;
+		state.els.modelLabel.textContent = `Model: ${this._describeModel(modelID, [])}`;
+		state.els.modelLabel.title = modelID;
+		let models = await this._getModelList();
+		state.els.modelLabel.textContent = `Model: ${this._describeModel(modelID, models)} · ${modelID}`;
 	},
 
 	async _workdir() {
@@ -585,7 +741,7 @@ ClaudeReaderAssistant = {
 				return;
 			}
 			if (msg.type === 'system' && msg.subtype === 'init' && msg.model) {
-				state.els.modelLabel.textContent = msg.model;
+				this._showModel(state, msg.model);
 			}
 			else if (msg.type === 'stream_event') {
 				let ev = msg.event;
@@ -757,7 +913,7 @@ ClaudeReaderAssistant = {
 .cra-assistant th, .cra-assistant td { border: 1px solid var(--fill-quarternary, #ccc); padding: 4px 8px; text-align: left; vertical-align: top; }
 .cra-assistant th { background: var(--fill-quinary, #f0f0f0); font-weight: 600; }
 .cra-assistant tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--fill-quinary, #f0f0f0) 50%, transparent); }
-.cra-pending::after { content: '생각하는 중…'; color: var(--fill-secondary, #777); }
+.cra-pending::after { content: 'Thinking…'; color: var(--fill-secondary, #777); }
 .cra-quote { display: flex; gap: 6px; align-items: flex-start; margin: 0 10px; padding: 6px 8px; font-size: 12px; border-inline-start: 3px solid var(--accent-blue, #4072e5); background: var(--material-background, #fff); }
 .cra-quote[hidden] { display: none; }
 .cra-quote-text { flex: 1; max-height: 80px; overflow-y: auto; white-space: pre-wrap; }

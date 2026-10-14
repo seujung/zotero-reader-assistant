@@ -6,3 +6,5 @@ pref("extensions.claude-reader-assistant.model", "");
 // Maximum number of document characters sent as context.
 pref("extensions.claude-reader-assistant.maxContextChars", 400000);
 pref("extensions.claude-reader-assistant.panelWidth", 380);
+// Side of the reader the panel is shown on: "right" or "left".
+pref("extensions.claude-reader-assistant.panelPosition", "right");
