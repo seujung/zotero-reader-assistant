@@ -2,6 +2,8 @@
 
 A Zotero plugin that adds a chat panel next to the PDF reader. Ask questions about the open document and get answers from [Claude Code](https://docs.claude.com/en/docs/claude-code/overview), using your own Claude Code login and default model.
 
+![Claude Assistant panel next to a PDF open in the Zotero reader](asset/image.png)
+
 - The document's text and metadata are sent as context with the first question.
 - Follow-up questions continue the same conversation, so earlier questions, answers and the document stay in context.
 - Answers stream in and render as GitHub-flavored Markdown (tables, lists, code blocks, links).
